@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Config, Theme } from "@shared/index.js";
 import type { SkyBody } from "./celestial.js";
-import { DEFAULT_CONFIG, formatDistance } from "@shared/index.js";
+import { DEFAULT_CONFIG, formatDistance, formatFeedCounts } from "@shared/index.js";
 import { useStream } from "../lib/useStream.js";
 import { useAmbientMode, kioskRequested } from "../lib/useAmbientMode.js";
 import { Renderer, type Pickable } from "./renderer.js";
@@ -422,7 +422,7 @@ export function Display() {
         <div className="hud">
           <div className={`hud-dot ${state.connected ? "ok" : "bad"}`} />
           <span>
-            {state.status?.source ?? "—"} · {state.aircraft.length} ac ·{" "}
+            {state.status?.source ?? "—"} · {state.aircraft.filter((a) => a.flight).length} ac{formatFeedCounts(state.status) && ` (${formatFeedCounts(state.status)})`} ·{" "}
             rot {cfg.rotationDeg}° · mirror {cfg.mirrorX ? "X" : "–"}
             {cfg.mirrorY ? "Y" : ""} · r {formatDistance(cfg.radiusMiles, cfg.distanceUnit)} · {cfg.projectionMode} · {cfg.theme}
           </span>

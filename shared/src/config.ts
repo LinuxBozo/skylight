@@ -69,6 +69,8 @@ export interface ShowFields {
   verticalRate: boolean;
   destination: boolean;
   registration: boolean;
+  /** Receiver the fix came from: "ADS-B" (1090) or "UAT" (978). */
+  link: boolean;
 }
 
 // --- PTZ camera tracker (roof camera that films the aircraft) ---
@@ -365,6 +367,9 @@ export interface Config {
   // --- data source ---
   /** dump1090/readsb aircraft.json URL for the radio source. */
   radioUrl: string;
+  /** dump978-fa aircraft.json URL (UAT, 978 MHz), merged with the radio feed.
+   *  Empty = no UAT receiver. */
+  uatUrl: string;
   /** Aggregator URL for the api source, with {lat}/{lon}/{r} filled from the
    *  current location and radius. Tunable because aggregators come and go —
    *  airplanes.live went feeder-only mid-flight and took the no-radio path
@@ -486,6 +491,7 @@ export const DEFAULT_CONFIG: Config = {
   locationProfiles: [],
 
   radioUrl: "http://localhost:8080/data/aircraft.json",
+  uatUrl: "",
   apiUrl: "https://opendata.adsb.fi/api/v3/lat/{lat}/lon/{lon}/dist/{r}",
 
   telemetry: true,
@@ -537,6 +543,7 @@ export const DEFAULT_CONFIG: Config = {
     verticalRate: false,
     destination: true,
     registration: false,
+    link: true,
   },
   nameDisplay: "flight",
   locationDisplay: "name",

@@ -218,6 +218,36 @@ function mergeSources(radio: Aircraft[], api: Aircraft[]): Aircraft[] {
   return [...byHex.values()];
 }
 
+/**
+ * Merge the two local receivers. An aircraft heard on UAT is a UAT-equipped
+ * aircraft (it is also what 1090 sees via ADS-R rebroadcasts), so its 978 fix
+ * is the direct one and always wins over the 1090 copy.
+ */
+function mergeReceivers(adsb: Aircraft[], uat: Aircraft[]): Aircraft[] {
+  const byHex = new Map<string, Aircraft>();
+  for (const a of adsb) byHex.set(a.hex, a);
+  for (const u of uat) byHex.set(u.hex, u);
+  return [...byHex.values()];
+}
+
+/** Per-feed aircraft counts for the status line. Only feeds in use appear.
+ *  Aircraft with no callsign are left out of the counts (not the snapshot). */
+function feedCounts(
+  source: DataSource,
+  merged: Aircraft[],
+  uatOn: boolean,
+  apiOn: boolean,
+): NonNullable<SourceStatus["counts"]> {
+  const named = merged.filter((a) => a.flight);
+  if (source === "api") return { api: named.length };
+  const n = (link: Aircraft["link"]) => named.filter((a) => a.link === link).length;
+  return {
+    adsb: n("adsb"),
+    ...(uatOn ? { uat: n("uat") } : {}),
+    ...(apiOn ? { api: n(undefined) } : {}),
+  };
+}
+
 /** Enrichment we've resolved for an aircraft, kept sticky for its session. */
 interface StickyEnrichment {
   typeName?: string;
@@ -319,8 +349,15 @@ export class Poller {
     }
   }
 
-  private async fetchList(source: DataSource, now: number): Promise<Aircraft[] | null> {
-    const url = source === "radio" ? this.o.getConfig().radioUrl : this.buildApiUrl();
+  /** `urlOverride` lets the UAT (dump978) feed reuse the radio path. */
+  private async fetchList(
+    source: DataSource,
+    now: number,
+    urlOverride?: string,
+  ): Promise<Aircraft[] | null> {
+    const url =
+      urlOverride ?? (source === "radio" ? this.o.getConfig().radioUrl : this.buildApiUrl());
+    const label = urlOverride ? "uat" : source;
     try {
       const json = await fetchJson(url);
       const rawList: RawAircraft[] = json.aircraft ?? json.ac ?? [];
@@ -333,7 +370,9 @@ export class Poller {
       const list: Aircraft[] = [];
       for (const raw of rawList) {
         const ac = normalize(raw, now, jsonAgeSec);
-        if (ac) list.push(ac);
+        if (!ac) continue;
+        if (source === "radio") ac.link = urlOverride ? "uat" : "adsb";
+        list.push(ac);
       }
       // Area APIs sometimes return a far wider box than the radius we asked
       // for, so a 3-mile setup ends up showing flights across the country.
@@ -352,10 +391,12 @@ export class Poller {
       } catch {
         // keep the raw url — a malformed one is itself the diagnosis
       }
-      this.lastError = `${source} fetch failed: ${reason} (${host})`;
+      // A UAT failure is logged but never becomes the status message: the UAT
+      // feed is optional, and the 1090 feed's own error is the one that matters.
+      if (!urlOverride) this.lastError = `${label} fetch failed: ${reason} (${host})`;
       if (now - this.lastErrorLogAt > 30_000) {
         this.lastErrorLogAt = now;
-        console.error(`[poller] ${source} fetch failed: ${reason} — ${url}`);
+        console.error(`[poller] ${label} fetch failed: ${reason} — ${url}`);
       }
       return null;
     }
@@ -427,7 +468,14 @@ export class Poller {
       await this.gate.wait();
       now = Date.now();
     }
-    const primary = await this.fetchList(this.o.source, now);
+    const uatUrl = this.o.source === "radio" ? this.o.getConfig().uatUrl : "";
+    const [radioList, uat] = await Promise.all([
+      this.fetchList(this.o.source, now),
+      uatUrl ? this.fetchList("radio", now, uatUrl) : Promise.resolve(null),
+    ]);
+    // Either receiver may be down without taking the other with it; the tick
+    // only fails when nothing answered.
+    const primary = radioList && uat ? mergeReceivers(radioList, uat) : radioList ?? uat;
     if (primary === null) {
       this.status = {
         ...this.status,
@@ -447,7 +495,8 @@ export class Poller {
       ok: true,
       count: merged.length,
       lastOk: now,
-      message: supplement ? `radio + ${this.lastApi.length} via API` : undefined,
+      counts: feedCounts(this.o.source, merged, uatUrl !== "", supplement),
+      down: [...(radioList ? [] : ["adsb" as const]), ...(uatUrl && !uat ? ["uat" as const] : [])],
     };
     this.o.onSnapshot(now, merged);
     this.o.onStatus(this.status);

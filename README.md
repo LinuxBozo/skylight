@@ -238,7 +238,9 @@ the display, not the decoder). If positions are present, check the **Location** 
 **Pointing at an existing dump1090 / readsb / PiAware feed.** Set the **Radio URL** in
 `/control` → Source to your feed's `aircraft.json` (dump1090-fa serves it at
 `http://<host>:8080/data/aircraft.json`) and switch the source to *radio*. No rebuild
-needed - it applies on the next poll.
+needed - it applies on the next poll. If you also run `dump978-fa` (UAT, 978 MHz), set
+the **UAT URL** to its `aircraft.json` (e.g. `http://<host>/skyaware978/data/aircraft.json`)
+and those aircraft are merged in; leave it blank to skip.
 
 **Installer fails with `Unsupported architecture: armhf`.** You're on 32-bit
 Raspberry Pi OS; Node.js no longer ships 32-bit ARM builds. Re-flash with
@@ -307,6 +309,7 @@ do - it's also how you keep access if they move to keyed APIs.
 |---|---|---|
 | `DATA_SOURCE` | `radio` | `radio` (dump1090) or `api` (aggregator, no hardware) |
 | `AIRCRAFT_JSON_URL` | `http://localhost:8080/data/aircraft.json` | dump1090 feed |
+| `UAT_JSON_URL` | *(empty)* | dump978-fa `aircraft.json` (UAT); first-run default, blank = off |
 | `API_URL` | `https://opendata.adsb.fi/api/v3/lat/{lat}/lon/{lon}/dist/{r}` | Aggregator for the `api` source. First-run default only - the control panel's **API URL** wins once set. See [Aggregators](#aggregators). |
 | `SUPPLEMENT_API` | `1` | When on radio, merge the API too (keeps landing aircraft alive) |
 | `PORT` / `HOST` | `3000` / `0.0.0.0` | HTTP + WebSocket |

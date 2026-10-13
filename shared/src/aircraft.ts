@@ -38,6 +38,9 @@ export interface Aircraft {
    *  must age it by THIS, not by `seen`. Undefined when the source doesn't
    *  report it (then `seen` is the best available estimate). */
   seenPos?: number;
+  /** Which receiver heard it: "adsb" (1090 MHz) or "uat" (978 MHz). Unset for
+   *  aggregator-sourced aircraft. */
+  link?: "adsb" | "uat";
   /** Signal strength, dBFS (radio only). */
   rssi?: number;
 

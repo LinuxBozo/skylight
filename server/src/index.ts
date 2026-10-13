@@ -30,6 +30,8 @@ const HOST = process.env.HOST ?? "0.0.0.0";
 const SOURCE = (process.env.DATA_SOURCE as DataSource) ?? "radio";
 const RADIO_URL =
   process.env.AIRCRAFT_JSON_URL ?? "http://localhost:8080/data/aircraft.json";
+// dump978-fa (UAT) aircraft.json; empty disables it.
+const UAT_URL = process.env.UAT_JSON_URL ?? "";
 const API_URL = process.env.API_URL ?? DEFAULT_CONFIG.apiUrl;
 const POLL_MS = Number(process.env.POLL_MS ?? 1000);
 const ROUTE_CACHE_HOURS = Number(process.env.ROUTE_CACHE_HOURS ?? 12);
@@ -44,12 +46,13 @@ const CONFIG_PATH = resolve(DATA_DIR, "config.json");
 const SERVER_DEFAULT_CONFIG: Config = {
   ...DEFAULT_CONFIG,
   radioUrl: RADIO_URL,
+  uatUrl: UAT_URL,
   apiUrl: API_URL,
 };
 
 /** Did the operator already set this URL from the control panel? If so it wins
  *  over the environment, which is only ever a first-run default. */
-function hasPersistedUrl(path: string, field: "radioUrl" | "apiUrl"): boolean {
+function hasPersistedUrl(path: string, field: "radioUrl" | "uatUrl" | "apiUrl"): boolean {
   try {
     const raw = JSON.parse(readFileSync(path, "utf8")) as Partial<Config>;
     return typeof raw[field] === "string";
@@ -60,11 +63,15 @@ function hasPersistedUrl(path: string, field: "radioUrl" | "apiUrl"): boolean {
 
 async function main(): Promise<void> {
   const configHasRadioUrl = hasPersistedUrl(CONFIG_PATH, "radioUrl");
+  const configHasUatUrl = hasPersistedUrl(CONFIG_PATH, "uatUrl");
   const configHasApiUrl = hasPersistedUrl(CONFIG_PATH, "apiUrl");
   const store = new ConfigStore(CONFIG_PATH, SERVER_DEFAULT_CONFIG);
   await store.load();
   if (!configHasRadioUrl && store.get().radioUrl !== RADIO_URL) {
     store.patch({ radioUrl: RADIO_URL });
+  }
+  if (!configHasUatUrl && store.get().uatUrl !== UAT_URL) {
+    store.patch({ uatUrl: UAT_URL });
   }
   if (!configHasApiUrl && store.get().apiUrl !== API_URL) {
     store.patch({ apiUrl: API_URL });

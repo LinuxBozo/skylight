@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Airport, Config, ShowFields, LocationProfile } from "@shared/index.js";
 import { convertAltitude, convertAltitudeToFt, convertDistance, convertDistanceToMi, round } from "@shared/index.js";
-import { formatLatLon } from "@shared/format.js";
+import { formatFeedCounts, formatLatLon } from "@shared/format.js";
 import { CONSTELLATIONS } from "@shared/stars.js";
 import { geoAvailability, geoErrorMessage } from "../lib/geolocation.js";
 import { useStream } from "../lib/useStream.js";
@@ -42,6 +42,7 @@ const FIELD_LABELS: Record<keyof ShowFields, string> = {
   verticalRate: "Vert. rate",
   destination: "Departing / Arriving",
   registration: "Registration",
+  link: "Receiver (ADS-B / UAT)",
 };
 
 export function Control() {
@@ -91,6 +92,8 @@ export function Control() {
   const set = (patch: Partial<Config>) => conn.patchConfig(patch);
   const setField = (k: keyof ShowFields, v: boolean) =>
     conn.patchConfig({ showFields: { ...cfg.showFields, [k]: v } });
+  const feeds = formatFeedCounts(state.status);
+  const feedBreakdown = feeds ? ` · ${feeds}` : "";
   const statusMessage = state.status?.message ? ` · ${state.status.message}` : "";
 
   const changeLocation = async (q: string) => {
@@ -226,6 +229,7 @@ export function Control() {
       "track": 155.18,
       "baroRate": -1536,
       "registration": "G-BOAA",
+      "link": "adsb",
       "typeCode": "CONC",
       "typeName": "Concorde",
       "airline": "British Airways",
@@ -248,7 +252,7 @@ export function Control() {
           Ceiling Tracker
         </div>
         <div className="stat">
-          {state.status?.source ?? "—"} · {state.aircraft.length} overhead{statusMessage}
+          {state.status?.source ?? "—"} · {state.aircraft.filter((a) => a.flight).length} overhead{feedBreakdown}{statusMessage}
         </div>
       </header>
 
@@ -334,6 +338,15 @@ export function Control() {
               ariaLabel="Radio aircraft JSON URL"
               onCommit={(v) => {
                 if (v !== cfg.radioUrl) set({ radioUrl: v });
+              }}
+            />
+          </Row>
+          <Row label="UAT URL" hint="dump978 aircraft.json · blank = off">
+            <TextInput
+              value={cfg.uatUrl}
+              ariaLabel="UAT (978 MHz) aircraft JSON URL"
+              onCommit={(v) => {
+                if (v !== cfg.uatUrl) set({ uatUrl: v });
               }}
             />
           </Row>

@@ -2,6 +2,7 @@
 
 import type { SpeedUnit, AltitudeUnit, DistanceUnit } from "./config.js";
 
+import type { SourceStatus } from "./messages.js";
 import { FT_TO_M, KT_TO_MPH, KT_TO_KMH, MI_TO_KM } from "./constants.js";
 
 const SPEED_SUFFIX: Record<SpeedUnit, string> = {
@@ -96,4 +97,22 @@ export function formatAltitude(altitudeFt: number, unit: AltitudeUnit): string {
 /** Format distance in the specified unit as a rounded, unit-suffixed string. */
 export function formatDistance(distanceMi: number, unit: DistanceUnit): string {
   return `${NUMBER_FORMAT(round(convertDistance(distanceMi, unit)))} ${DISTANCE_SUFFIX[unit]}`;
+}
+
+const FEED_LABELS = { adsb: "ADS-B", uat: "UAT", api: "API" } as const;
+
+/** "133 ADS-B · 2 UAT · 4 API", with "ADS-B down" for a failed receiver.
+ *  Empty when the server reports no breakdown. */
+export function formatFeedCounts(
+  status: Pick<SourceStatus, "counts" | "down"> | null | undefined,
+  sep = " · ",
+): string {
+  const counts = status?.counts;
+  if (!counts) return "";
+  const parts: string[] = [];
+  for (const k of ["adsb", "uat", "api"] as const) {
+    if (status?.down?.includes(k as "adsb" | "uat")) parts.push(`${FEED_LABELS[k]} down`);
+    else if (counts[k] != null) parts.push(`${counts[k]} ${FEED_LABELS[k]}`);
+  }
+  return parts.join(sep);
 }

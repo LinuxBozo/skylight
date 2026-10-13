@@ -14,6 +14,12 @@ export interface SourceStatus {
   lastOk: number | null;
   /** Human-readable note (e.g. last error). */
   message?: string;
+  /** Aircraft in the last snapshot by feed. Only the feeds in use are present
+   *  (adsb always for radio; uat when a UAT URL is set; api when supplementing
+   *  or primary). Counted after merging, so each aircraft is in exactly one. */
+  counts?: { adsb?: number; uat?: number; api?: number };
+  /** Receivers that failed their last poll. */
+  down?: ("adsb" | "uat")[];
 }
 
 /** An aircraft on the airport surface (from the aggregator's area API). */

@@ -177,6 +177,7 @@ export function labelLines(cfg: Config, ac: Aircraft): { text: string; kind: "ti
     }
   }
   if (f.registration && ac.registration) out.push({ text: ac.registration, kind: "sub" });
+  if (f.link && ac.link) out.push({ text: ac.link === "uat" ? "UAT" : "ADS-B", kind: "sub" });
   return out;
 }
 

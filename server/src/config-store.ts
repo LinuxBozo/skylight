@@ -7,7 +7,9 @@ import { DEFAULT_CONFIG, mergeConfig, type Config } from "@shared/index.js";
 
 type Listener = (config: Config) => void;
 /** Config fields the control panel lets you point at an arbitrary host. */
-const URL_FIELDS = ["radioUrl", "apiUrl"] as const;
+const URL_FIELDS = ["radioUrl", "uatUrl", "apiUrl"] as const;
+/** Fields where an empty string means "off" rather than a bad URL. */
+const OPTIONAL_URL_FIELDS: readonly string[] = ["uatUrl"];
 
 export class ConfigValidationError extends Error {
   constructor(message: string) {
@@ -18,6 +20,7 @@ export class ConfigValidationError extends Error {
 
 function validateUrlField(field: string, value: unknown): void {
   const error = `${field} must be an http or https URL`;
+  if (value === "" && OPTIONAL_URL_FIELDS.includes(field)) return;
   if (typeof value !== "string") {
     throw new ConfigValidationError(error);
   }

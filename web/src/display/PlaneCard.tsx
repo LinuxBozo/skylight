@@ -191,6 +191,7 @@ export function PlaneCard(props: { ac: Aircraft; cfg: Config; onClose: () => voi
       {ac.gs != null && <Row label="Speed" value={`${Math.round(ac.gs)} kt`} />}
       {ac.registration && <Row label="Tail #" value={ac.registration} />}
       {heading && <Row label="Heading" value={heading} />}
+      {ac.link && <Row label="Source" value={ac.link === "uat" ? "UAT" : "ADS-B"} />}
       {ac.squawk && (
         <Row
           label="Squawk"
